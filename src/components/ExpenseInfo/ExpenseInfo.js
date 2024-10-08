@@ -2,7 +2,6 @@ import React from "react";
 import styles from "./ExpenseInfo.module.css";
 
 const ExpenseInfo = ({ expenses }) => {
-  console.log(expenses)
   let profitAmount = 0;
   let lossAmount = 0;
   const grandTotal = expenses.reduce((acc, currentExpense) => {

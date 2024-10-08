@@ -11,34 +11,15 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 // import firebase methods here
-import { doc, collection, addDoc, setDoc, getDocs } from "firebase/firestore";
+import { doc, collection, addDoc, setDoc, getDocs, deleteDoc, onSnapshot } from "firebase/firestore";
 import { db } from "./firebaseInit";
 
 const reducer = (state, action) => {
   const { payload } = action;
   switch (action.type) {
-    // add cases to set retrived expenses to state here
-    case 'SET_EXPENSES':{
+    case "GET_EXPENSES": {
       return {
-        ...state,
-        expenses: [...payload.expenses, ...state.expenses]
-      }
-    }
-    case "ADD_EXPENSE": {
-      return {
-        expenses: [payload.expense, ...state.expenses]
-      };
-    }
-    case "REMOVE_EXPENSE": {
-      return {
-        expenses: state.expenses.filter((expense) => expense.id !== payload.id)
-      };
-    }
-    case "UPDATE_EXPENSE": {
-      const expensesDuplicate = state.expenses;
-      expensesDuplicate[payload.expensePos] = payload.expense;
-      return {
-        expenses: expensesDuplicate
+        expenses: payload.expenses
       };
     }
     default:
@@ -50,34 +31,31 @@ function App() {
   const [state, dispatch] = useReducer(reducer, { expenses: [] });
   const [expenseToUpdate, setExpenseToUpdate] = useState(null);
 
-  // create function to get expenses from firestore here
-  //use appropriate hook to get the expenses when app mounts
-  useEffect(()=>{
-    async function fetchData() {
-      const allExpenses = await getDocs(collection(db, 'expenses'));
-      const expenses = allExpenses.docs.map((doc)=>{
-          return {
-            id: doc.id,
-            ...doc.data()
-          }
-      })
-      dispatch({ type: "SET_EXPENSES", payload: {expenses}});
-    }
-    fetchData();
-  }, [])
+  const getData = async () => {
+    const subscrb = onSnapshot(collection(db, "expenses"), (snapshot)=>{
+      const expenses = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      dispatch({ type: "GET_EXPENSES", payload: { expenses } });
+    });
+    toast.success("Expenses retrived successfully.");
+  };
+
+  useEffect(() => {
+    getData();
+  }, []);
+
   const addExpense = async (expense) => {
     const expenseRef = collection(db, "expenses");
-    const docRef = await addDoc(expenseRef, expense);
-
-    dispatch({
-      type: "ADD_EXPENSE",
-      payload: { expense: { id: docRef.id, ...expense } }
-    });
+    await addDoc(expenseRef, expense);
     toast.success("Expense added successfully.");
   };
 
-  const deleteExpense = (id) => {
-    dispatch({ type: "REMOVE_EXPENSE", payload: { id } });
+  const deleteExpense = async (id) => {
+    // delete expense from firestore here
+    await deleteDoc(doc(db, 'expenses', id))
+    toast.success("Expense deleted successfully.");
   };
 
   const resetExpenseToUpdate = () => {
@@ -97,8 +75,6 @@ function App() {
 
     const expenseRef = doc(db, "expenses", expense.id);
     await setDoc(expenseRef, expense);
-
-    dispatch({ type: "UPDATE_EXPENSE", payload: { expensePos, expense } });
     toast.success("Expense updated successfully.");
   };
 
